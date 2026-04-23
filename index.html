@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jana Nováková — Paintings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Spacing+Mono&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #f5f2ec;
+      --ink:      #1a1712;
+      --muted:    #8a8275;
+      --accent:   #b5572a;
+      --rule:     #d6d0c4;
+      --max:      900px;
+    }
+
+    html { font-size: 17px; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 300;
+      line-height: 1.7;
+      padding: 0 1.5rem;
+    }
+
+    /* ── NAV ── */
+    nav {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 2.4rem 0 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    nav .site-name {
+      font-size: 1.05rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      font-weight: 400;
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    nav .nav-links { display: flex; gap: 2rem; }
+
+    nav .nav-links a {
+      font-size: .82rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color .2s;
+    }
+
+    nav .nav-links a:hover { color: var(--ink); }
+
+    /* ── HERO ── */
+    header {
+      max-width: var(--max);
+      margin: 5rem auto 4rem;
+    }
+
+    header h1 {
+      font-size: clamp(2.6rem, 6vw, 4.2rem);
+      font-weight: 300;
+      font-style: italic;
+      line-height: 1.15;
+      letter-spacing: -.01em;
+    }
+
+    header p {
+      margin-top: 1.4rem;
+      max-width: 520px;
+      font-size: 1.05rem;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    /* ── SECTION HEADING ── */
+    .section-heading {
+      max-width: var(--max);
+      margin: 5rem auto 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+    }
+
+    .section-heading span {
+      font-size: .75rem;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .section-heading::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--rule);
+    }
+
+    /* ── GALLERY ── */
+    .gallery {
+      max-width: var(--max);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 2.5rem 2rem;
+    }
+
+    .painting {
+      cursor: pointer;
+      animation: fadeUp .5s ease both;
+    }
+
+    .painting:nth-child(2) { animation-delay: .08s; }
+    .painting:nth-child(3) { animation-delay: .16s; }
+    .painting:nth-child(4) { animation-delay: .24s; }
+    .painting:nth-child(5) { animation-delay: .32s; }
+    .painting:nth-child(6) { animation-delay: .40s; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .painting-frame {
+      position: relative;
+      overflow: hidden;
+      background: #e8e3d9;
+      aspect-ratio: 4/5;
+    }
+
+    .painting-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform .5s ease, filter .5s ease;
+      filter: saturate(.92);
+    }
+
+    .painting:hover .painting-frame img {
+      transform: scale(1.04);
+      filter: saturate(1.05);
+    }
+
+    .painting-info {
+      margin-top: .9rem;
+    }
+
+    .painting-title {
+      font-size: 1.1rem;
+      font-style: italic;
+      font-weight: 300;
+    }
+
+    .painting-meta {
+      font-size: .78rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: .25rem;
+    }
+
+    .painting-desc {
+      font-size: .92rem;
+      color: var(--muted);
+      margin-top: .5rem;
+      line-height: 1.65;
+      display: none; /* shown in lightbox */
+    }
+
+    /* ── LIGHTBOX ── */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(26,23,18,.88);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      padding: 2rem 1.5rem;
+      overflow-y: auto;
+      animation: fadeIn .25s ease;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .lightbox.open { display: flex; align-items: center; justify-content: center; }
+
+    .lb-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
+      max-width: 860px;
+      width: 100%;
+      align-items: start;
+    }
+
+    .lb-img { width: 100%; display: block; }
+
+    .lb-body { color: var(--bg); }
+
+    .lb-title {
+      font-size: 2rem;
+      font-style: italic;
+      font-weight: 300;
+      line-height: 1.2;
+    }
+
+    .lb-meta {
+      font-size: .78rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #a09880;
+      margin-top: .5rem;
+    }
+
+    .lb-desc {
+      margin-top: 1.4rem;
+      font-size: 1rem;
+      line-height: 1.8;
+      color: #c8c2b5;
+    }
+
+    .lb-close {
+      position: fixed;
+      top: 1.4rem;
+      right: 1.8rem;
+      background: none;
+      border: 1px solid rgba(255,255,255,.25);
+      color: #fff;
+      font-size: 1.2rem;
+      width: 2.4rem;
+      height: 2.4rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .2s;
+    }
+
+    .lb-close:hover { background: rgba(255,255,255,.12); }
+
+    /* ── ABOUT ── */
+    #about {
+      max-width: var(--max);
+      margin: 5rem auto;
+      display: grid;
+      grid-template-columns: 1fr 1.6fr;
+      gap: 4rem;
+      align-items: start;
+    }
+
+    .about-label {
+      font-size: .75rem;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .about-name {
+      font-size: 1.9rem;
+      font-style: italic;
+      font-weight: 300;
+      line-height: 1.2;
+      margin-top: .5rem;
+    }
+
+    .about-cv {
+      display: inline-block;
+      margin-top: 1.4rem;
+      font-size: .78rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid var(--accent);
+      padding-bottom: 2px;
+      transition: opacity .2s;
+    }
+
+    .about-cv:hover { opacity: .65; }
+
+    .about-text { font-size: 1.02rem; color: #4a4640; line-height: 1.9; }
+
+    .about-text p + p { margin-top: 1.1rem; }
+
+    /* ── FOOTER ── */
+    footer {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 2.5rem 0 3rem;
+      border-top: 1px solid var(--rule);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: .78rem;
+      letter-spacing: .06em;
+      color: var(--muted);
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      .lb-inner { grid-template-columns: 1fr; gap: 1.5rem; }
+      #about { grid-template-columns: 1fr; gap: 2rem; }
+      footer { flex-direction: column; gap: .6rem; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a class="site-name" href="#">Jana Nováková</a>
+    <div class="nav-links">
+      <a href="#works">Works</a>
+      <a href="#about">About</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header>
+    <h1>Paintings<br>2022–2024</h1>
+    <p>
+      A selection of oil and acrylic works exploring memory, landscape,
+      and the tension between stillness and movement.
+    </p>
+  </header>
+
+  <!-- GALLERY -->
+  <div class="section-heading" id="works">
+    <span>Selected works</span>
+  </div>
+
+  <div class="gallery">
+
+    <!--
+      HOW TO ADD A PAINTING:
+      1. Put your image file in the same folder as this HTML file.
+      2. Copy one <div class="painting"> block.
+      3. Fill in src, title, year/medium/size, and description.
+    -->
+
+    <div class="painting"
+         data-title="Morning Field"
+         data-meta="2023 · Oil on canvas · 80 × 60 cm"
+         data-desc="Painted over three mornings in early spring. The haze that sits low over the fields before the sun breaks through was the starting point — that particular grey-gold light that makes everything feel suspended."
+         onclick="openLightbox(this)">
+      <div class="painting-frame">
+        <!-- Replace with your image: <img src="morning-field.jpg" alt="Morning Field"> -->
+        <img src="https://images.unsplash.com/photo-1578301978018-3005759f48f7?w=800&q=80" alt="Morning Field" />
+      </div>
+      <div class="painting-info">
+        <div class="painting-title">Morning Field</div>
+        <div class="painting-meta">2023 · Oil on canvas · 80 × 60 cm</div>
+      </div>
+    </div>
+
+    <div class="painting"
+         data-title="Interior with Blue Chair"
+         data-meta="2022 · Acrylic on linen · 70 × 70 cm"
+         data-desc="Domestic space as a kind of archaeology. The chair belonged to my grandmother. The painting is not about the chair so much as about what accumulates around ordinary objects over decades."
+         onclick="openLightbox(this)">
+      <div class="painting-frame">
+        <img src="https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=800&q=80" alt="Interior with Blue Chair" />
+      </div>
+      <div class="painting-info">
+        <div class="painting-title">Interior with Blue Chair</div>
+        <div class="painting-meta">2022 · Acrylic on linen · 70 × 70 cm</div>
+      </div>
+    </div>
+
+    <div class="painting"
+         data-title="Study in Ochre"
+         data-meta="2024 · Oil on board · 30 × 40 cm"
+         data-desc="A small study made quickly in one sitting. Sometimes the constraints of a small surface and a single session produce something that a larger, more laboured painting cannot."
+         onclick="openLightbox(this)">
+      <div class="painting-frame">
+        <img src="https://images.unsplash.com/photo-1549490349-8643362247b5?w=800&q=80" alt="Study in Ochre" />
+      </div>
+      <div class="painting-info">
+        <div class="painting-title">Study in Ochre</div>
+        <div class="painting-meta">2024 · Oil on board · 30 × 40 cm</div>
+      </div>
+    </div>
+
+    <div class="painting"
+         data-title="Late Afternoon"
+         data-meta="2023 · Oil on canvas · 100 × 80 cm"
+         data-desc="The light that exists for about twenty minutes before sunset in summer. Almost impossible to catch — by the time you've looked properly it's already different."
+         onclick="openLightbox(this)">
+      <div class="painting-frame">
+        <img src="https://images.unsplash.com/photo-1580136579312-94651dfd596d?w=800&q=80" alt="Late Afternoon" />
+      </div>
+      <div class="painting-info">
+        <div class="painting-title">Late Afternoon</div>
+        <div class="painting-meta">2023 · Oil on canvas · 100 × 80 cm</div>
+      </div>
+    </div>
+
+    <div class="painting"
+         data-title="Winter Shore"
+         data-meta="2022 · Acrylic on canvas · 90 × 60 cm"
+         data-desc="Painted from memory and a handful of small sketches made in November. The sea in winter has a severity that summer visitors never see — I find it more honest."
+         onclick="openLightbox(this)">
+      <div class="painting-frame">
+        <img src="https://images.unsplash.com/photo-1510832842230-87253f48d74f?w=800&q=80" alt="Winter Shore" />
+      </div>
+      <div class="painting-info">
+        <div class="painting-title">Winter Shore</div>
+        <div class="painting-meta">2022 · Acrylic on canvas · 90 × 60 cm</div>
+      </div>
+    </div>
+
+    <div class="painting"
+         data-title="Red House, Dusk"
+         data-meta="2024 · Oil on canvas · 60 × 80 cm"
+         data-desc="A building I pass regularly. What interested me was not the architecture but the way it absorbs and holds colour at the end of the day — becoming briefly something almost luminous before the light leaves entirely."
+         onclick="openLightbox(this)">
+      <div class="painting-frame">
+        <img src="https://images.unsplash.com/photo-1571115764595-644a1f56a55c?w=800&q=80" alt="Red House, Dusk" />
+      </div>
+      <div class="painting-info">
+        <div class="painting-title">Red House, Dusk</div>
+        <div class="painting-meta">2024 · Oil on canvas · 60 × 80 cm</div>
+      </div>
+    </div>
+
+  </div><!-- /gallery -->
+
+  <!-- ABOUT -->
+  <div class="section-heading" style="margin-top:6rem">
+    <span>About the artist</span>
+  </div>
+
+  <section id="about">
+    <div>
+      <div class="about-label">Artist</div>
+      <div class="about-name">Jana<br>Nováková</div>
+      <a class="about-cv" href="cv.pdf" target="_blank">Download CV (PDF) ↗</a>
+    </div>
+    <div class="about-text">
+      <p>
+        Jana Nováková (b. 1985, Brno) is a Czech painter working primarily in oil and acrylic.
+        Her work is concerned with the ordinary — domestic interiors, agricultural landscapes,
+        the particular quality of light at specific times of day — and the way that looking
+        carefully at familiar things can make them strange again.
+      </p>
+      <p>
+        She studied fine art at the Faculty of Fine Arts, Brno University of Technology,
+        graduating in 2009. Her work has been shown in group exhibitions across the Czech Republic
+        and Slovakia. She lives and works in Brno.
+      </p>
+      <p>
+        For enquiries regarding works, please contact:
+        <a href="mailto:jana@example.com" style="color:var(--accent); text-decoration:none;">jana@example.com</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <span>© 2024 Jana Nováková</span>
+    <span>All images copyright the artist</span>
+  </footer>
+
+  <!-- LIGHTBOX -->
+  <div class="lightbox" id="lightbox" onclick="closeLightboxOnBackdrop(event)">
+    <button class="lb-close" onclick="closeLightbox()">✕</button>
+    <div class="lb-inner">
+      <img class="lb-img" id="lb-img" src="" alt="" />
+      <div class="lb-body">
+        <div class="lb-title" id="lb-title"></div>
+        <div class="lb-meta"  id="lb-meta"></div>
+        <div class="lb-desc"  id="lb-desc"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openLightbox(el) {
+      document.getElementById('lb-img').src   = el.querySelector('img').src;
+      document.getElementById('lb-img').alt   = el.dataset.title;
+      document.getElementById('lb-title').textContent = el.dataset.title;
+      document.getElementById('lb-meta').textContent  = el.dataset.meta;
+      document.getElementById('lb-desc').textContent  = el.dataset.desc;
+      document.getElementById('lightbox').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function closeLightboxOnBackdrop(e) {
+      if (e.target === document.getElementById('lightbox')) closeLightbox();
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeLightbox();
+    });
+  </script>
+
+</body>
+</html>
