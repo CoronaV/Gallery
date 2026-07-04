@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Manual Corner Crop</title>
+<style>
+  :root{
+    --bg:#1b1b1c; --panel:#232324; --line:#3a3a3c; --text:#eceae6;
+    --muted:#9a9895; --accent:#e8c05a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    min-height:100vh;
+  }
+  header{
+    padding:20px 24px 14px; border-bottom:1px solid var(--line);
+  }
+  header h1{margin:0 0 4px; font-size:18px; font-weight:600;}
+  header p{margin:0; color:var(--muted); font-size:13.5px; line-height:1.5;}
+  .wrap{
+    display:flex; flex-direction:column; align-items:center; gap:16px;
+    padding:20px;
+  }
+  .controls{
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    justify-content:center;
+  }
+  button, .filebtn{
+    background:var(--panel); color:var(--text); border:1px solid var(--line);
+    padding:9px 16px; border-radius:7px; font-size:13.5px; cursor:pointer;
+  }
+  button:hover, .filebtn:hover{border-color:var(--accent);}
+  button:disabled{opacity:.4; cursor:default;}
+  button.primary{background:var(--accent); color:#1b1b1c; border-color:var(--accent); font-weight:600;}
+  input[type=file]{display:none;}
+  .stage{
+    position:relative; max-width:100%; line-height:0;
+    border:1px solid var(--line); border-radius:8px; overflow:hidden;
+    background:#000;
+  }
+  canvas{display:block; max-width:88vw; max-height:70vh; touch-action:none;}
+  .hint{color:var(--muted); font-size:13px; text-align:center; min-height:18px;}
+  .dl-row{display:none; gap:10px;}
+  #resultWrap{display:none; flex-direction:column; align-items:center; gap:10px;}
+  #resultCanvas{border:1px solid var(--line); border-radius:8px; max-width:88vw; max-height:60vh;}
+  .badge{
+    display:inline-block; background:var(--accent); color:#1b1b1c;
+    font-size:11px; font-weight:700; padding:2px 7px; border-radius:5px;
+    margin-right:6px; vertical-align:1px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Manual corner crop</h1>
+  <p>For photos the automatic script couldn't confidently straighten (e.g. low-contrast edges).<br>
+  Load a photo, drag the four dots onto the painting's corners, then export.</p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <label class="filebtn" for="fileInput">Choose photo…</label>
+    <input id="fileInput" type="file" accept="image/*">
+    <button id="resetPts" disabled>Reset corners</button>
+    <button id="warpBtn" class="primary" disabled>Straighten &amp; crop</button>
+  </div>
+  <div class="hint" id="hint"></div>
+
+  <div class="stage" id="stage" style="display:none;">
+    <canvas id="editCanvas"></canvas>
+  </div>
+
+  <div id="resultWrap">
+    <div class="hint"><span class="badge">Result</span>drag not needed here — this is the final straightened crop</div>
+    <canvas id="resultCanvas"></canvas>
+    <div class="controls">
+      <button id="downloadBtn" class="primary">Download PNG</button>
+      <button id="backBtn">Back to corners</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const fileInput = document.getElementById('fileInput');
+const stage = document.getElementById('stage');
+const editCanvas = document.getElementById('editCanvas');
+const ctx = editCanvas.getContext('2d');
+const hint = document.getElementById('hint');
+const resetPts = document.getElementById('resetPts');
+const warpBtn = document.getElementById('warpBtn');
+const resultWrap = document.getElementById('resultWrap');
+const resultCanvas = document.getElementById('resultCanvas');
+const downloadBtn = document.getElementById('downloadBtn');
+const backBtn = document.getElementById('backBtn');
+
+let img = null;
+let points = [];      // in canvas (displayed) coordinate space
+let dragIdx = -1;
+let dispScale = 1;
+let fileBaseName = 'painting';
+
+fileInput.addEventListener('change', (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  fileBaseName = f.name.replace(/\.[^.]+$/, '');
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const image = new Image();
+    image.onload = () => loadImage(image);
+    image.src = ev.target.result;
+  };
+  reader.readAsDataURL(f);
+});
+
+function loadImage(image){
+  img = image;
+  resultWrap.style.display = 'none';
+  stage.style.display = 'block';
+
+  const maxW = Math.min(window.innerWidth * 0.86, 1000);
+  const maxH = window.innerHeight * 0.68;
+  dispScale = Math.min(maxW / image.width, maxH / image.height, 1);
+
+  editCanvas.width = image.width * dispScale;
+  editCanvas.height = image.height * dispScale;
+
+  const m = 0.12;
+  points = [
+    {x: editCanvas.width*m,     y: editCanvas.height*m},
+    {x: editCanvas.width*(1-m), y: editCanvas.height*m},
+    {x: editCanvas.width*(1-m), y: editCanvas.height*(1-m)},
+    {x: editCanvas.width*m,     y: editCanvas.height*(1-m)},
+  ];
+
+  resetPts.disabled = false;
+  warpBtn.disabled = false;
+  hint.textContent = 'Drag each dot onto a corner of the painting (order: top-left, top-right, bottom-right, bottom-left).';
+  draw();
+}
+
+function draw(){
+  ctx.clearRect(0,0,editCanvas.width, editCanvas.height);
+  ctx.drawImage(img, 0, 0, editCanvas.width, editCanvas.height);
+
+  ctx.strokeStyle = 'rgba(232,192,90,0.9)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  points.forEach((p,i)=>{ i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y); });
+  ctx.closePath();
+  ctx.stroke();
+
+  const labels = ['TL','TR','BR','BL'];
+  points.forEach((p,i)=>{
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 9, 0, Math.PI*2);
+    ctx.fillStyle = '#e8c05a';
+    ctx.fill();
+    ctx.strokeStyle = '#1b1b1c';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#1b1b1c';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(labels[i], p.x, p.y);
+  });
+}
+
+function getPos(e){
+  const rect = editCanvas.getBoundingClientRect();
+  const scaleX = editCanvas.width / rect.width;
+  const scaleY = editCanvas.height / rect.height;
+  const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  return {x: cx*scaleX, y: cy*scaleY};
+}
+
+function nearestPoint(pos){
+  let best=-1, bestD=26*26; // pick radius in canvas px
+  points.forEach((p,i)=>{
+    const d = (p.x-pos.x)**2 + (p.y-pos.y)**2;
+    if(d<bestD){bestD=d; best=i;}
+  });
+  return best;
+}
+
+function startDrag(e){
+  if(!img) return;
+  const pos = getPos(e);
+  dragIdx = nearestPoint(pos);
+  if(dragIdx>=0) e.preventDefault();
+}
+function moveDrag(e){
+  if(dragIdx<0) return;
+  e.preventDefault();
+  const pos = getPos(e);
+  points[dragIdx].x = Math.max(0, Math.min(editCanvas.width, pos.x));
+  points[dragIdx].y = Math.max(0, Math.min(editCanvas.height, pos.y));
+  draw();
+}
+function endDrag(){ dragIdx = -1; }
+
+editCanvas.addEventListener('mousedown', startDrag);
+window.addEventListener('mousemove', moveDrag);
+window.addEventListener('mouseup', endDrag);
+editCanvas.addEventListener('touchstart', startDrag, {passive:false});
+window.addEventListener('touchmove', moveDrag, {passive:false});
+window.addEventListener('touchend', endDrag);
+
+resetPts.addEventListener('click', ()=>{ if(img) loadImage(img); });
+
+// ---- Homography (4-point DLT) + perspective warp via inverse mapping ----
+function computeHomography(src, dst){
+  // src, dst: arrays of 4 {x,y} -> returns 3x3 matrix mapping src->dst
+  const A = [];
+  for(let i=0;i<4;i++){
+    const {x:sx, y:sy} = src[i];
+    const {x:dx, y:dy} = dst[i];
+    A.push([sx, sy, 1, 0, 0, 0, -dx*sx, -dx*sy, -dx]);
+    A.push([0, 0, 0, sx, sy, 1, -dy*sx, -dy*sy, -dy]);
+  }
+  // Solve A·h = 0 via least squares using normal equations on 8 unknowns (h9=1)
+  // Build 8x8 system from the 8 rows, moving the h9 column to RHS.
+  const M = [], b = [];
+  for(let r=0; r<8; r++){
+    const row = A[r].slice(0,8);
+    M.push(row);
+    b.push(-A[r][8]);
+  }
+  const h = solveLinearSystem(M, b);
+  h.push(1);
+  return h; // [h11,h12,h13,h21,h22,h23,h31,h32,h33]
+}
+
+function solveLinearSystem(M, b){
+  const n = M.length;
+  for(let i=0;i<n;i++) M[i].push(b[i]);
+  for(let col=0; col<n; col++){
+    let piv = col;
+    for(let r=col+1;r<n;r++) if(Math.abs(M[r][col])>Math.abs(M[piv][col])) piv=r;
+    [M[col],M[piv]] = [M[piv],M[col]];
+    const pv = M[col][col];
+    for(let c=col;c<=n;c++) M[col][c] /= pv;
+    for(let r=0;r<n;r++){
+      if(r===col) continue;
+      const f = M[r][col];
+      for(let c=col;c<=n;c++) M[r][c] -= f*M[col][c];
+    }
+  }
+  return M.map(row=>row[n]);
+}
+
+function applyH(h, x, y){
+  const w = h[6]*x + h[7]*y + h[8];
+  return {
+    x: (h[0]*x + h[1]*y + h[2]) / w,
+    y: (h[3]*x + h[4]*y + h[5]) / w
+  };
+}
+
+warpBtn.addEventListener('click', ()=>{
+  // convert displayed points back to full-res image coordinates
+  const full = points.map(p => ({x: p.x/dispScale, y: p.y/dispScale}));
+  const [tl,tr,br,bl] = full;
+
+  const widthTop = Math.hypot(tr.x-tl.x, tr.y-tl.y);
+  const widthBot = Math.hypot(br.x-bl.x, br.y-bl.y);
+  const outW = Math.round(Math.max(widthTop, widthBot));
+  const heightL = Math.hypot(bl.x-tl.x, bl.y-tl.y);
+  const heightR = Math.hypot(br.x-tr.x, br.y-tr.y);
+  const outH = Math.round(Math.max(heightL, heightR));
+
+  const dst = [{x:0,y:0},{x:outW,y:0},{x:outW,y:outH},{x:0,y:outH}];
+  // Homography mapping OUTPUT -> SOURCE (for inverse sampling), so compute dst->src
+  const hInv = computeHomography(dst, full);
+
+  const srcCanvas = document.createElement('canvas');
+  srcCanvas.width = img.width; srcCanvas.height = img.height;
+  const srcCtx = srcCanvas.getContext('2d');
+  srcCtx.drawImage(img, 0, 0);
+  const srcData = srcCtx.getImageData(0,0, img.width, img.height).data;
+
+  resultCanvas.width = outW;
+  resultCanvas.height = outH;
+  const rctx = resultCanvas.getContext('2d');
+  const outImgData = rctx.createImageData(outW, outH);
+
+  for(let y=0; y<outH; y++){
+    for(let x=0; x<outW; x++){
+      const s = applyH(hInv, x, y);
+      const sx = Math.round(s.x), sy = Math.round(s.y);
+      const di = (y*outW + x) * 4;
+      if(sx>=0 && sx<img.width && sy>=0 && sy<img.height){
+        const si = (sy*img.width + sx) * 4;
+        outImgData.data[di]   = srcData[si];
+        outImgData.data[di+1] = srcData[si+1];
+        outImgData.data[di+2] = srcData[si+2];
+        outImgData.data[di+3] = 255;
+      } else {
+        outImgData.data[di+3] = 0;
+      }
+    }
+  }
+  rctx.putImageData(outImgData, 0, 0);
+
+  stage.style.display = 'none';
+  resultWrap.style.display = 'flex';
+});
+
+backBtn.addEventListener('click', ()=>{
+  resultWrap.style.display = 'none';
+  stage.style.display = 'block';
+});
+
+downloadBtn.addEventListener('click', ()=>{
+  const link = document.createElement('a');
+  link.download = fileBaseName + '_corrected.png';
+  link.href = resultCanvas.toDataURL('image/png');
+  link.click();
+});
+</script>
+</body>
+</html>
