@@ -181,6 +181,13 @@
       display: none; /* shown in lightbox */
     }
 
+    .gallery-status {
+      grid-column: 1 / -1;
+      font-size: .92rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+
     /* ── LIGHTBOX ── */
     .lightbox {
       display: none;
@@ -342,100 +349,18 @@
     <span>Selected works</span>
   </div>
 
-  <div class="gallery">
-
+  <div class="gallery" id="gallery">
     <!--
+      Populated at load time from pictures/manifest.json — see gallery.js.
+
       HOW TO ADD A PAINTING:
-      1. Put your image file in the same folder as this HTML file.
-      2. Copy one <div class="painting"> block.
-      3. Fill in src, title, year/medium/size, and description.
+      1. Put the image file in the pictures/ folder next to this HTML file.
+      2. (Optional) Put a same-named .txt file next to it with the title,
+         metadata, and description — see pictures/TEMPLATE.txt for the format.
+      3. Run: python3 generate_manifest.py
+      4. Refresh the page.
     -->
-
-    <div class="painting"
-         data-title="Morning Field"
-         data-meta="2023 · Oil on canvas · 80 × 60 cm"
-         data-desc="Painted over three mornings in early spring. The haze that sits low over the fields before the sun breaks through was the starting point — that particular grey-gold light that makes everything feel suspended."
-         onclick="openLightbox(this)">
-      <div class="painting-frame">
-        <!-- Replace with your image: <img src="morning-field.jpg" alt="Morning Field"> -->
-        <img src="pictures/obr1.jpg" alt="Morning Field" />
-      </div>
-      <div class="painting-info">
-        <div class="painting-title">Morning Field</div>
-        <div class="painting-meta">2023 · Oil on canvas · 80 × 60 cm</div>
-      </div>
-    </div>
-
-    <div class="painting"
-         data-title="Interior with Blue Chair"
-         data-meta="2022 · Acrylic on linen · 70 × 70 cm"
-         data-desc="Domestic space as a kind of archaeology. The chair belonged to my grandmother. The painting is not about the chair so much as about what accumulates around ordinary objects over decades."
-         onclick="openLightbox(this)">
-      <div class="painting-frame">
-        <img src="pictures/obr2.jpg" alt="Interior with Blue Chair" />
-      </div>
-      <div class="painting-info">
-        <div class="painting-title">Interior with Blue Chair</div>
-        <div class="painting-meta">2022 · Acrylic on linen · 70 × 70 cm</div>
-      </div>
-    </div>
-
-    <div class="painting"
-         data-title="Study in Ochre"
-         data-meta="2024 · Oil on board · 30 × 40 cm"
-         data-desc="A small study made quickly in one sitting. Sometimes the constraints of a small surface and a single session produce something that a larger, more laboured painting cannot."
-         onclick="openLightbox(this)">
-      <div class="painting-frame">
-        <img src="pictures/obr3.jpg" alt="Study in Ochre" />
-      </div>
-      <div class="painting-info">
-        <div class="painting-title">Study in Ochre</div>
-        <div class="painting-meta">2024 · Oil on board · 30 × 40 cm</div>
-      </div>
-    </div>
-
-    <div class="painting"
-         data-title="Late Afternoon"
-         data-meta="2023 · Oil on canvas · 100 × 80 cm"
-         data-desc="The light that exists for about twenty minutes before sunset in summer. Almost impossible to catch — by the time you've looked properly it's already different."
-         onclick="openLightbox(this)">
-      <div class="painting-frame">
-        <img src="pictures/obr4.jpg" alt="Late Afternoon" />
-      </div>
-      <div class="painting-info">
-        <div class="painting-title">Late Afternoon</div>
-        <div class="painting-meta">2023 · Oil on canvas · 100 × 80 cm</div>
-      </div>
-    </div>
-
-    <div class="painting"
-         data-title="Winter Shore"
-         data-meta="2022 · Acrylic on canvas · 90 × 60 cm"
-         data-desc="Painted from memory and a handful of small sketches made in November. The sea in winter has a severity that summer visitors never see — I find it more honest."
-         onclick="openLightbox(this)">
-      <div class="painting-frame">
-        <img src="pictures/obr5.jpg" alt="Winter Shore" />
-      </div>
-      <div class="painting-info">
-        <div class="painting-title">Winter Shore</div>
-        <div class="painting-meta">2022 · Acrylic on canvas · 90 × 60 cm</div>
-      </div>
-    </div>
-
-    <div class="painting"
-         data-title="Red House, Dusk"
-         data-meta="2024 · Oil on canvas · 60 × 80 cm"
-         data-desc="A building I pass regularly. What interested me was not the architecture but the way it absorbs and holds colour at the end of the day — becoming briefly something almost luminous before the light leaves entirely."
-         onclick="openLightbox(this)">
-      <div class="painting-frame">
-        <img src="pictures/obr6.jpg" alt="Red House, Dusk" />
-      </div>
-      <div class="painting-info">
-        <div class="painting-title">Red House, Dusk</div>
-        <div class="painting-meta">2024 · Oil on canvas · 60 × 80 cm</div>
-      </div>
-    </div>
-
+    <p class="gallery-status">Loading paintings…</p>
   </div><!-- /gallery -->
 
   <!-- ABOUT -->
@@ -483,17 +408,8 @@
     </div>
   </div>
 
+  <script src="gallery.js"></script>
   <script>
-    function openLightbox(el) {
-      document.getElementById('lb-img').src   = el.querySelector('img').src;
-      document.getElementById('lb-img').alt   = el.dataset.title;
-      document.getElementById('lb-title').textContent = el.dataset.title;
-      document.getElementById('lb-meta').textContent  = el.dataset.meta;
-      document.getElementById('lb-desc').textContent  = el.dataset.desc;
-      document.getElementById('lightbox').classList.add('open');
-      document.body.style.overflow = 'hidden';
-    }
-
     function closeLightbox() {
       document.getElementById('lightbox').classList.remove('open');
       document.body.style.overflow = '';
@@ -506,6 +422,8 @@
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') closeLightbox();
     });
+
+    loadGallery();
   </script>
 
 </body>
