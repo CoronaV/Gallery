@@ -1,0 +1,12 @@
+# Raw photos that update_gallery.py's deskew stage must skip (one filename
+# per line, case-insensitive, # comments allowed).
+# These are not to be used e.g. reference shots of title labels or parts of diptych paintings.
+# Keep them in raw_photos/ - the labels hold titles/years useful for captions.txt.
+IMG_1203.JPG
+IMG_1219.JPG
+IMG_1224.JPG
+IMG_1243.JPG
+IMG_1244.JPG
+IMG_1234.JPG
+IMG_1235.JPG
+IMG_1248.JPG
