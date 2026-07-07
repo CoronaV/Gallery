@@ -1,5 +1,6 @@
 remove dependence on picture/ folder, make it configurable or work in a way that works with the cropper
-streamline process of adding and updating images, descriptions - put all picture descriptions in one file?
-convert js script to python
+streamline process of adding and updating images, descriptions - put all picture descriptions in one file instead of one file per picture?
+convert js script to python to reduce number of languages?
 make command line utils user friendly
-make commands connected to each other?
+make picture cropping / manifest generating commands connected to each other?
+add lint, type annotation, test, etc. commit hooks
