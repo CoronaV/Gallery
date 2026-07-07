@@ -1,5 +1,5 @@
 remove dependence on picture/ folder, make it configurable or work in a way that works with the cropper
-streamline process of adding and updating images, descriptions
+streamline process of adding and updating images, descriptions - put all picture descriptions in one file?
 convert js script to python
 make command line utils user friendly
 make commands connected to each other?
