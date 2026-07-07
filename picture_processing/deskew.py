@@ -85,6 +85,7 @@ def refine_corners(img, rect, bg_ref, frac=0.02, dist_thresh=45, step=0.025, max
     centroid = rect.mean(axis=0)
     work = rect.copy()
     history = []
+    dists = []
     for it in range(max_iters):
         warped = warp(img, work)
         flags = []
