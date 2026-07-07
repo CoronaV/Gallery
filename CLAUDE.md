@@ -19,24 +19,25 @@ The site is currently hosted on Github: `https://coronav.github.io/Gallery/` - c
 
 ## Architecture
 
-**Rendering (`index.html` + `gallery.js`)**: `index.html` is a static shell with an empty `#gallery` div. On load, `gallery.js`'s `loadGallery()` fetches `pictures/manifest.json` (an array of `{file, title, meta, description}`) and builds painting cards + the lightbox from it entirely client-side. There is no server logic — `manifest.json` is a build artifact, not hand-written.
+**Rendering (`index.html` + `gallery.js`)**: `index.html` is a static shell with an empty `#gallery` div. On load, `gallery.js`'s `loadGallery()` fetches `pictures/manifest.json` (an array of `{file, thumb, hires, width, height, title, meta, date, description}`, paths relative to `pictures/`) and builds painting cards + the lightbox from it entirely client-side. Cards render in batches of 12 via an IntersectionObserver sentinel (`#gallery-sentinel`); the grid shows `thumb`, the lightbox shows `file` immediately and silently swaps in `hires` once it loads (stale-swap guarded via a token), with prev/next buttons, arrow keys, and touch swipe. There is no server logic — `manifest.json` is a build artifact, not hand-written.
 
-**Manifest generation (`generate_manifest.py`)**: run this after adding/removing/re-captioning any image in `pictures/`. It scans `pictures/`, and for each image `foo.jpg` looks for a sibling `foo.txt` (format documented in `TEMPLATE.txt` at repo root — `title:`/`meta:` are single-line, `description:` must be the last key and swallows the rest of the file). `TEMPLATE.txt` itself is just a sample/reference, not consumed directly — no per-image `.txt` files exist in `pictures/` yet, so every painting currently renders as "Unnamed" with no metadata or description. Output is written to `pictures/manifest.json`, which must be regenerated and committed whenever the picture set changes — it's not generated automatically.
+**Pipeline (`update_gallery.py`)**: the single command that goes from raw phone photos to everything `pictures/` serves. Stages, in order:
+1. **Deskew** (skippable via `--skip-deskew`): every image in `picture_processing/raw_photos/` (gitignored) without a `<stem>_corrected.jpg|png` counterpart in `picture_processing/cropped/` gets auto-deskewed via `picture_processing/deskew.py` (OpenCV GrabCut, a few seconds per photo). Failures are reported with instructions to use `picture_processing/manual_corner_crop.html` (standalone browser tool; saves `<name>_corrected.png` to move into `cropped/`) or to list the file in `picture_processing/raw_ignore.txt` (one filename per line — used for non-painting reference shots like title-label photos).
+2. **Derivatives**: three JPEG tiers per painting — `pictures/thumbs/` (max 480px, grid), `pictures/web/` (max 1600px, initial lightbox), `pictures/hires/` (max 2560px, progressive lightbox upgrade). Output names strip the `_corrected` suffix. Each LANCZOS downscale is followed by a slight Gaussian blur (anti-moiré low-pass; the canvas weave otherwise aliases against browser rescaling — radii in `*_BLUR_RADIUS` constants). Incremental via mtimes (`--force` to rebuild); orphaned derivatives of removed sources are deleted.
+3. **Captions + manifest**: `pictures/captions.txt` is ONE file holding every painting's `title:`/`meta:`/`date:`/`description:`, keyed by source filename sections like `[IMG_1202_corrected.jpg]`; the script appends empty stub sections for new images and reports missing titles. `date:` accepts `2023`, `2023-05`, `5/2023`, `12.5.2023`, `2023-05-12` etc. and is stored ISO-truncated (string-sortable). `description:` must be last in a section and runs until the next `[section]`. Then `pictures/manifest.json` is regenerated.
+
+Run `python3 update_gallery.py` after adding, removing, re-cropping, or re-captioning any image, then commit the changed files under `pictures/`. Full workflow is in `README.md`.
+
+Note: `picture_processing/cropped/` keeps the full-resolution files committed as the archival source; `pictures/` only holds the small generated derivatives. Never put full-res images back into `pictures/`.
+
+## Tests
 
 ```
-python3 generate_manifest.py pictures
+python3 -m unittest discover -s tests
 ```
-(the script takes the target folder as `argv[1]`; there's no default).
-
-**Image processing pipeline (`picture_processing/`)**: raw phone photos of paintings go through perspective correction before they become gallery-ready images in `pictures/`:
-1. `picture_processing/raw_photos/` — original photos (gitignored, not in the repo).
-2. `picture_processing/deskew.py <indir> <outdir> [debugdir]` — auto-detects the canvas edges in each photo via OpenCV GrabCut + contour approximation, iteratively refines the 4 corners against the sampled background color, and perspective-warps to a flat rectangle. Prints `NO QUAD FOUND - needs manual crop` for photos it can't handle automatically.
-3. `picture_processing/manual_corner_crop.html` — a standalone browser tool (open directly, no server needed) for manually dragging the 4 corners and warping when `deskew.py` fails on a photo. Pure vanilla JS (own homography/DLT solver + canvas warp), no dependencies.
-4. Corrected images land in `picture_processing/cropped/`, then get promoted into `pictures/` at the repo root — the top-level `pictures/` folder is what `index.html`/`gallery.js` actually serve. Note `picture_processing/cropped/` currently keeps its own committed copy of `manifest.json` too; the two `pictures` directories are not symlinked, so re-copy files into the top-level `pictures/` when promoting new images.
+Stdlib `unittest` only (pytest is not installed on this machine). Tests cover the caption parser, stub appending, manifest generation, image conversion, orphan cleanup, and incremental skipping in `update_gallery.py`.
 
 ## Engineering practices
 Before working on a feature, look up context and ask questions if unsure. Then plan the implementation in testable steps, and then implement. Write tests, but avoid tests that don't add value. Remove dead code, don't leave technical debt.
-
-TODO: if any good fits exist for this project add commit hooks for type annotations, lint and tests for all languages - python, js, html.
 
 Where applicable, suggest ways of improving the user experience of both website manager and website customer.

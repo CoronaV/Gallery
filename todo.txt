@@ -1,6 +1,23 @@
-remove dependence on picture/ folder, make it configurable or work in a way that works with the cropper
-streamline process of adding and updating images, descriptions - put all picture descriptions in one file instead of one file per picture?
-convert js script to python to reduce number of languages?
-make command line utils user friendly
-make picture cropping / manifest generating commands connected to each other?
-add lint, type annotation, test, etc. commit hooks
+DONE (2026-07-07, update_gallery.py rework):
+- remove dependence on picture/ folder — pipeline reads picture_processing/cropped/, --source/--out configurable
+- streamline adding/updating images — ONE command from raw photo to website: update_gallery.py
+  auto-deskews new raw_photos/, builds derivatives, stubs captions (raw_ignore.txt for non-paintings)
+- one captions.txt for all pictures, with title/meta/date/description; date parsed to sortable ISO
+- serve resized images instead of 16-31MB originals: thumbs 480px (grid) / web 1600px (lightbox)
+  / hires 2560px (progressive lightbox upgrade); anti-moire gaussian low-pass after each downscale
+- lightbox prev/next + keyboard + swipe + hi-res swap, batched gallery rendering, Kontakt section
+- unit tests for the pipeline: python3 -m unittest discover -s tests (34 tests)
+
+REMAINING:
+- fill in real captions in pictures/captions.txt (68 paintings, all currently untitled).
+  HINT: raw_photos/IMG_1203, 1219, 1243, 1244 are photos of the paper title labels
+  (titles + years) — use them as reference, they are ignore-listed from the gallery itself.
+- review the 3 newly auto-added paintings (IMG_1234, 1235, 1248) — remove any that don't belong
+  (delete from picture_processing/cropped/, add raw name to raw_ignore.txt, re-run)
+- replace placeholder email todo@example.com in index.html (#about and #kontakt) with the real one
+- personalize the hero intro paragraph in index.html (marked with a TODO comment)
+- use the manifest 'date' field on the site (e.g. sort toggle newest-first, or show date in lightbox)
+- convert js script to python to reduce number of languages? (manual_corner_crop.html is still standalone JS)
+- add lint, type annotation, test, etc. commit hooks (tests exist now; hook wiring still todo)
+- optional: og:image / meta description tags for nicer link previews when sharing the site
+- optional: shrink clone size — old full-res blobs remain in git history (git filter-repo; destructive)
