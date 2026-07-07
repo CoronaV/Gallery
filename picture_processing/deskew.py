@@ -1,7 +1,9 @@
-import cv2
-import numpy as np
 import os
 import sys
+
+import cv2
+import numpy as np
+
 
 def order_points(pts):
     pts = np.array(pts, dtype="float32")
@@ -48,9 +50,11 @@ def grabcut_quad(img, inset=0.04, proc_size=900):
 
 def warp(img, rect):
     (tl, tr, br, bl) = rect
-    wA = np.linalg.norm(br - bl); wB = np.linalg.norm(tr - tl)
+    wA = np.linalg.norm(br - bl)
+    wB = np.linalg.norm(tr - tl)
     maxW = int(max(wA, wB))
-    hA = np.linalg.norm(tr - br); hB = np.linalg.norm(tl - bl)
+    hA = np.linalg.norm(tr - br)
+    hB = np.linalg.norm(tl - bl)
     maxH = int(max(hA, hB))
     dst = np.array([[0, 0], [maxW - 1, 0], [maxW - 1, maxH - 1], [0, maxH - 1]], dtype="float32")
     M = cv2.getPerspectiveTransform(rect, dst)
@@ -69,9 +73,12 @@ def background_reference(img, margin_frac=0.03):
 def corner_patch(warped, corner_idx, frac):
     h, w = warped.shape[:2]
     ph, pw = max(6, int(h * frac)), max(6, int(w * frac))
-    if corner_idx == 0: return warped[0:ph, 0:pw]
-    if corner_idx == 1: return warped[0:ph, w - pw:w]
-    if corner_idx == 2: return warped[h - ph:h, w - pw:w]
+    if corner_idx == 0:
+        return warped[0:ph, 0:pw]
+    if corner_idx == 1:
+        return warped[0:ph, w - pw:w]
+    if corner_idx == 2:
+        return warped[h - ph:h, w - pw:w]
     return warped[h - ph:h, 0:pw]
 
 def is_flat_bright_patch(patch, std_thresh=11, bright_thresh=205):

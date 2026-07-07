@@ -19,10 +19,10 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import re
 import sys
 import time
-import json
 from datetime import date
 from pathlib import Path
 
@@ -65,7 +65,7 @@ SECTION_RE = re.compile(r'^\[(.+)\]\s*$')
 # separators is tolerated, and a single trailing '.' is allowed.
 _DATE_ISO_FULL = re.compile(r'^(\d{4})\s*-\s*(\d{1,2})\s*-\s*(\d{1,2})\.?$')       # 2023-05-12
 _DATE_ISO_YM = re.compile(r'^(\d{4})\s*-\s*(\d{1,2})\.?$')                        # 2023-05
-_DATE_DMY_DOT = re.compile(r'^(\d{1,2})\s*\.\s*(\d{1,2})\s*\.\s*(\d{4})\.?$')     # 12.5.2023 / 12. 5. 2023
+_DATE_DMY_DOT = re.compile(r'^(\d{1,2})\s*\.\s*(\d{1,2})\s*\.\s*(\d{4})\.?$')     # 12.5.2023
 _DATE_MY_SLASH = re.compile(r'^(\d{1,2})\s*/\s*(\d{4})\.?$')                      # 5/2023, 05/2023
 _DATE_MY_DOT = re.compile(r'^(\d{1,2})\s*\.\s*(\d{4})\.?$')                       # 5.2023
 _DATE_YEAR = re.compile(r'^(\d{4})\.?$')                                          # 2023
@@ -88,6 +88,10 @@ CAPTIONS_HEADER = """\
 #     until the next [section] starts.
 #   - Empty title/meta/date/description are fine - the painting just
 #     displays without that piece of info.
+#   - The order sections appear in THIS file is the order paintings are
+#     shown on the site. Reorder the gallery by moving a whole [section]
+#     block (its header + fields) up or down. Newly added images are
+#     appended at the bottom, so they show last until you move them.
 #
 # After saving changes, re-run:
 #     python3 update_gallery.py
@@ -197,7 +201,8 @@ def parse_date(value: str, section_name: str) -> str:
         return ''
 
     def invalid():
-        print(f"Warning: unparseable date '{value}' in section [{section_name}]; storing empty date.")
+        print(f"Warning: unparseable date '{value}' in section "
+              f"[{section_name}]; storing empty date.")
         return ''
 
     m = _DATE_ISO_FULL.match(value)
@@ -296,7 +301,7 @@ def parse_captions(text: str) -> dict:
 
     result = {}
     for name, data in sections.items():
-        description = ' '.join(l for l in data['description_lines'] if l)
+        description = ' '.join(line for line in data['description_lines'] if line)
         description = re.sub(r'\s+', ' ', description).strip()
         result[name] = {
             'title': data['title'],
@@ -490,7 +495,8 @@ def run(source_dir: Path, out_dir: Path, force: bool,
     print(f"Scanned {len(images)} image(s) in {source_dir}/")
     print(f"  processed: {processed}, skipped (up to date): {skipped}")
     if removed:
-        print(f"  removed {len(removed)} orphaned derivative file(s): {', '.join(sorted(set(removed)))}")
+        joined = ', '.join(sorted(set(removed)))
+        print(f"  removed {len(removed)} orphaned derivative file(s): {joined}")
 
     # --- captions ---
     captions_path = out_dir / 'captions.txt'
@@ -503,10 +509,18 @@ def run(source_dir: Path, out_dir: Path, force: bool,
         # re-parse so the freshly appended (empty) stubs are reflected below
         captions = parse_captions(captions_path.read_text(encoding='utf-8'))
 
+    # Display order = the order sections appear in captions.txt, so the gallery
+    # manager reorders paintings just by moving sections in that one file.
+    # captions now has a section for every source (stubs were appended above),
+    # so every src_name resolves; the fallback only guards odd edge cases.
+    caption_order = {name: i for i, name in enumerate(captions)}
+    raw_entries.sort(key=lambda e: caption_order.get(e['src_name'], len(caption_order)))
+
     manifest = []
     missing_titles = []
     for e in raw_entries:
-        caption = captions.get(e['src_name'], {'title': '', 'meta': '', 'date': '', 'description': ''})
+        caption = captions.get(e['src_name'],
+                               {'title': '', 'meta': '', 'date': '', 'description': ''})
         if not caption['title']:
             missing_titles.append(e['src_name'])
         manifest.append({
@@ -537,7 +551,8 @@ def run(source_dir: Path, out_dir: Path, force: bool,
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     parser.add_argument('--source', type=Path, default=Path('picture_processing/cropped'),
-                         help="folder with full-resolution corrected paintings (default: %(default)s)")
+                         help="folder with full-resolution corrected paintings "
+                              "(default: %(default)s)")
     parser.add_argument('--out', type=Path, default=Path('pictures'),
                          help="folder the website serves from (default: %(default)s)")
     parser.add_argument('--raw', type=Path, default=Path('picture_processing/raw_photos'),

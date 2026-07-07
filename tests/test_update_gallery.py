@@ -86,7 +86,8 @@ class AppendMissingSectionsTests(unittest.TestCase):
             ug.append_missing_sections(path, ['B.jpg', 'C.jpg'])
 
             new_text = path.read_text(encoding='utf-8')
-            self.assertTrue(new_text.startswith(original), 'existing content must be preserved byte-for-byte')
+            self.assertTrue(new_text.startswith(original),
+                            'existing content must be preserved byte-for-byte')
             self.assertIn('[B.jpg]', new_text)
             self.assertIn('[C.jpg]', new_text)
 
@@ -240,6 +241,44 @@ class PipelineIntegrationTests(unittest.TestCase):
             self.assertEqual(entry['meta'], '')
             self.assertEqual(entry['description'], '')
         self.assertEqual((manifest[0]['width'], manifest[0]['height']), (100, 60))
+
+    def test_manifest_follows_captions_file_order(self):
+        # First run creates stub sections in natural order.
+        self._run()
+        captions_path = self.out_dir / 'captions.txt'
+
+        # Manager reorders the gallery by moving whole sections: put img10
+        # first, then img1, then img2 - a deliberately non-natural order.
+        reordered = ''.join(
+            f'[{name}]\ntitle:\nmeta:\ndate:\ndescription:\n\n'
+            for name in ('img10_corrected.png', 'img1_corrected.jpg', 'img2_corrected.jpg')
+        )
+        captions_path.write_text(reordered, encoding='utf-8')
+
+        self._run()
+        manifest = json.loads((self.out_dir / 'manifest.json').read_text(encoding='utf-8'))
+        self.assertEqual(
+            [e['file'] for e in manifest],
+            ['web/img10.jpg', 'web/img1.jpg', 'web/img2.jpg'],
+        )
+
+    def test_new_images_append_after_existing_caption_order(self):
+        # A captions.txt that only mentions img2 (in the "first" slot); img1
+        # and img10 have no section yet and must be appended after it.
+        captions_path = self.out_dir / 'captions.txt'
+        self.out_dir.mkdir(parents=True, exist_ok=True)
+        captions_path.write_text(
+            '[img2_corrected.jpg]\ntitle: Two\nmeta:\ndate:\ndescription:\n',
+            encoding='utf-8',
+        )
+        self._run()
+        manifest = json.loads(captions_path.with_name('manifest.json').read_text(encoding='utf-8'))
+        self.assertEqual(manifest[0]['file'], 'web/img2.jpg')
+        # the two newly stubbed images follow, in natural order
+        self.assertEqual(
+            [e['file'] for e in manifest[1:]],
+            ['web/img1.jpg', 'web/img10.jpg'],
+        )
 
     def test_rgba_source_becomes_plain_rgb_jpeg(self):
         self._run()

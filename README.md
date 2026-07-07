@@ -55,6 +55,15 @@ then open `http://localhost:8000/`.
    `pictures/captions.txt` are all checked in — GitHub Pages serves them
    directly.
 
+## Ordering the paintings
+
+The order paintings appear on the site is the order their `[section]`
+blocks appear in `pictures/captions.txt`. To rearrange the gallery, move a
+whole section (its `[header]` plus its `title:`/`meta:`/`date:`/
+`description:` lines) up or down in that file, then run
+`python3 update_gallery.py` and commit. Newly added images are appended at
+the bottom, so they show last until you move them.
+
 ## Architecture
 
 - **`index.html` + `gallery.js`** — `index.html` is a static shell with an
@@ -93,3 +102,18 @@ then open `http://localhost:8000/`.
 ```
 python3 -m unittest discover -s tests
 ```
+
+## Developing / commit hook
+
+`update_gallery.py` and its tests are linted with [ruff](https://docs.astral.sh/ruff/)
+and covered by stdlib `unittest`. A versioned pre-commit hook in `hooks/`
+runs both before every commit. Enable it once per clone:
+
+```
+python3 -m pip install ruff        # one-time; the hook skips lint if it's absent
+git config core.hooksPath hooks
+```
+
+After that, `git commit` runs `ruff check .` and the test suite, and aborts
+the commit if either fails. Lint rules live in `pyproject.toml`. To bypass
+the hook for a single commit, use `git commit --no-verify`.

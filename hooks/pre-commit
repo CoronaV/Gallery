@@ -1,0 +1,39 @@
+#!/bin/sh
+# Pre-commit hook: lint with ruff and run the unit tests before every commit.
+#
+# This hook is versioned (it lives in hooks/, not the un-tracked .git/hooks/).
+# It is wired up per-clone with:
+#
+#     git config core.hooksPath hooks
+#
+# Git for Windows runs this through its bundled sh, so it works cross-platform.
+# Skip it for a single commit with `git commit --no-verify` if you must.
+set -e
+
+# Find a Python interpreter (Windows installs it as `python` or `py`).
+if command -v python3 >/dev/null 2>&1; then
+    PY=python3
+elif command -v python >/dev/null 2>&1; then
+    PY=python
+elif command -v py >/dev/null 2>&1; then
+    PY=py
+else
+    echo "pre-commit: no Python interpreter found (tried python3, python, py)." >&2
+    exit 1
+fi
+
+# Lint. ruff is optional infrastructure, so a missing ruff is a loud warning
+# rather than a hard block — install it with `python -m pip install ruff`.
+if "$PY" -m ruff --version >/dev/null 2>&1; then
+    echo "pre-commit: ruff check ..."
+    "$PY" -m ruff check .
+else
+    echo "pre-commit: ruff not installed; skipping lint." >&2
+    echo "            install it with '$PY -m pip install ruff'." >&2
+fi
+
+# Tests (stdlib unittest only — always available).
+echo "pre-commit: running tests ..."
+"$PY" -m unittest discover -s tests
+
+echo "pre-commit: all checks passed."

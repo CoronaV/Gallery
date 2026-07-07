@@ -15,6 +15,10 @@
 #     until the next [section] starts.
 #   - Empty title/meta/date/description are fine - the painting just
 #     displays without that piece of info.
+#   - The order sections appear in THIS file is the order paintings are
+#     shown on the site. Reorder the gallery by moving a whole [section]
+#     block (its header + fields) up or down. Newly added images are
+#     appended at the bottom, so they show last until you move them.
 #
 # After saving changes, re-run:
 #     python3 update_gallery.py

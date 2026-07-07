@@ -8,6 +8,14 @@ DONE (2026-07-07, update_gallery.py rework):
 - lightbox prev/next + keyboard + swipe + hi-res swap, batched gallery rendering, Kontakt section
 - unit tests for the pipeline: python3 -m unittest discover -s tests (34 tests)
 
+DONE (2026-07-07, ordering + hooks):
+- gallery display order now follows the order of [section]s in pictures/captions.txt
+  (manifest is sorted to match it; new images append at the end). Reorder by moving
+  whole sections in that file. Tests + README/CLAUDE.md updated.
+- ruff config (pyproject.toml) + versioned pre-commit hook (hooks/pre-commit, enabled
+  via `git config core.hooksPath hooks`) that runs ruff check + the unit tests on
+  every commit. Cleaned up all pre-existing lint. Now 36 tests.
+
 REMAINING:
 - fill in real captions in pictures/captions.txt (68 paintings, all currently untitled).
   HINT: raw_photos/IMG_1203, 1219, 1243, 1244 are photos of the paper title labels
@@ -18,6 +26,6 @@ REMAINING:
 - personalize the hero intro paragraph in index.html (marked with a TODO comment)
 - use the manifest 'date' field on the site (e.g. sort toggle newest-first, or show date in lightbox)
 - convert js script to python to reduce number of languages? (manual_corner_crop.html is still standalone JS)
-- add lint, type annotation, test, etc. commit hooks (tests exist now; hook wiring still todo)
+- optional: add mypy type-checking to the pre-commit hook (update_gallery.py is already annotated)
 - optional: og:image / meta description tags for nicer link previews when sharing the site
 - optional: shrink clone size — old full-res blobs remain in git history (git filter-repo; destructive)

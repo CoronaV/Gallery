@@ -1,0 +1,13 @@
+# Ruff configuration for the gallery pipeline. This project has no build step
+# and no package.json; ruff is the one Python linter/formatter it relies on.
+# Install it once with `python3 -m pip install ruff`, then the pre-commit hook
+# in hooks/pre-commit runs `ruff check` and the unit tests on every commit.
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+# pycodestyle errors (E), pyflakes (F), isort (I), pyupgrade (UP),
+# flake8-bugbear (B), and comprehension cleanups (C4). A pragmatic set that
+# catches real mistakes without fighting the existing style.
+select = ["E", "F", "I", "UP", "B", "C4"]
